@@ -26,6 +26,14 @@ async def requests_handler(bot, update):
     secondiDaSleppare = futuroMenoOra.total_seconds()
     asyncio.create_task(accettareq(bot, update, secondiDaSleppare))
 
+    welcome = await db.getWelcome(update.chat.id)
+    if welcome[0] is not None:
+        try:
+            welcome = welcome[0].split(":")
+            await bot.copy_message(update.from_user.id, int(welcome[1]), int(welcome[0]))
+        except Exception as e:
+            print(str(e))
+    
     await db.adduser(update.from_user.id)
 
     print('Ended in:', round(time()-t1, 4), '\n')
@@ -129,8 +137,10 @@ async def bot_handler(bot, message, is_callback=False):
         canale = text.replace('/gestisci', '')
         info = await bot.get_chat(canale)
         tempo = await db.getTempo(canale)
-        text=f"📢 | {info.title}\n\n⏳ Tempo accettazione: {tempo[0]} minuti\n\nPremi il bottone qua sotto per modificare il tempo di accettazione."
-        menu = [[{'text': '⏱ Imposta tempo', 'callback_data': f'/modificatempo{canale}'}],[{'text': '⬅️ Indietro', 'callback_data': '/canali'}]]
+        benvenuto = await db.getWelcome(canale)
+        benvenuto = "✅" if benvenuto[0] is not None else "❌"
+        text=f"📢 | {info.title}\n\n⏳ Tempo accettazione: {tempo[0]} minuti\n✍️ Benvenuto impostato: {benvenuto}\n\nPremi il bottone qua sotto per modificare il tempo di accettazione."
+        menu = [[{'text': '⏱ Imposta tempo', 'callback_data': f'/modificatempo{canale}'}, {'text': '💬 Imposta benvenuto', 'callback_data': f'/modificabenvenuto{canale}'}],[{'text': '⬅️ Indietro', 'callback_data': '/canali'}]]
         menu = await gen_menu(menu)
         await edit(bot, chatid, text, menu, msgid, cbid)
 
@@ -148,6 +158,18 @@ async def bot_handler(bot, message, is_callback=False):
         menu = await gen_menu(menu)
         await edit(bot, chatid, text, menu, msgid, cbid)
 
+    elif text.startswith('/modificabenvenuto'):
+        if not is_callback: return
+        canale = text.replace('/modificabenvenuto', '')
+        await db.updateAction('nuovoBenvenuto'+ str(canale), userid)
+        text = "📣 Manda ora il messaggio di benvenuto che verrà mandato dal bot a chiunque manderà una richiesta di accesso a questo canale (manda solo uno 0 per rimuovere il benvenuto)"
+        menu = [
+            [
+                {'text': '🔙 Back', 'callback_data': f'/gestisci{canale}'},
+            ]
+        ]
+        menu = await gen_menu(menu)
+        await edit(bot, chatid, text, menu, msgid, cbid)
 
     elif text.startswith('/time'):
         await db.updateAction('', userid)
@@ -181,6 +203,18 @@ async def bot_handler(bot, message, is_callback=False):
                     await bot.send_message(chatid, "Minuti non validi assicurati che il valore sia compreso tra 0 e 1440, premi /start se vuoi tornare indietro")    
             except:
                 await bot.send_message(chatid, "Minuti non validi, assicurati di inserire un valore numerico intero, premi /start se vuoi annullare")
+        if act.startswith('nuovoBenvenuto'):
+            canale=act.replace('nuovoBenvenuto', '')
+            try:
+                if text=="0":
+                    await db.updateWelcome(None, canale)
+                else:
+                    await db.updateWelcome(str(message.id)+":"+str(chatid), canale)
+                await db.updateAction('', userid)
+                await bot.send_message(chatid, "Benvenuto aggiornato con successo, premi /start o il bottone back qui sopra per tornare indietro")
+            except Exception as e:
+                print(str(e))
+                await bot.send_message(chatid, "Si è verificato un errore, riprova o premi /start se vuoi tornare indietro")
 
     print('Ended in:', round(time()-t1, 4), '\n')
     return
