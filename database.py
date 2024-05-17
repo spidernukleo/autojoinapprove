@@ -13,7 +13,7 @@ class Database:
     async def connect(self):
         self.conn = await aiosqlite.connect('data/maindb.db', loop=self.loop)
         await self.execute("CREATE TABLE IF NOT EXISTS users (`ID` INTEGER PRIMARY KEY AUTOINCREMENT , `chat_id` BIGINT(15) NOT NULL, `lastmsg` INT(8) DEFAULT 0, `defaultTime` INTEGER DEFAULT 2, `action` VARCHAR(100) NULL DEFAULT NULL);", [], commit=True)
-        await self.execute("CREATE TABLE IF NOT EXISTS channels (`ID` INTEGER PRIMARY KEY AUTOINCREMENT , `chat_id` BIGINT(15) NOT NULL, `tempoAttesa` INTEGER, `userid` BIGINT);", [], commit=True)
+        await self.execute("CREATE TABLE IF NOT EXISTS channels (`ID` INTEGER PRIMARY KEY AUTOINCREMENT , `chat_id` BIGINT(15) NOT NULL, `tempoAttesa` INTEGER, `welcomePost` VARCHAR, `userid` BIGINT);", [], commit=True)
         return self.conn
 
     async def execute(self, sql: str, values: tuple, commit: bool = False, fetch: int = 0):
@@ -100,6 +100,9 @@ class Database:
     async def getTempo(self, chat_id: int):
         return await self.execute('SELECT tempoAttesa FROM channels WHERE chat_id = ?', (chat_id,), fetch=1)
     
+    async def getWelcome(self, chat_id: int):
+        return await self.execute('SELECT welcomePost FROM channels WHERE chat_id = ?', (chat_id,), fetch=1)
+
     async def getDefaultTime(self, userid):
         return await self.execute('SELECT defaultTime FROM users WHERE chat_id = ?', (userid,), fetch=1)
 
@@ -111,15 +114,21 @@ class Database:
     async def updateLastmsg(self, lastmsg: int, chat_id: int):
         await self.execute('UPDATE users SET lastmsg = ? WHERE chat_id = ?', (lastmsg, chat_id, ), commit=True)
 
-    async def updateDaBannare(self, daBannare: str, chat_id: int):
-        await self.execute('UPDATE users SET daBannare = ? WHERE chat_id = ?', (daBannare, chat_id, ), commit=True)
-
     async def updateTempo(self, nuoveOre: int, chat_id: int):
         await self.execute('UPDATE channels SET tempoAttesa = ? WHERE chat_id= ?', (nuoveOre, chat_id,), commit=True)
 
+    async def updateWelcome(self, nuovoWelcome: int, chat_id: int):
+        await self.execute('UPDATE channels SET welcomePost = ? WHERE chat_id = ?', (nuovoWelcome, chat_id,), commit=True)
 
     async def updateDefaultTime(self, nuovoTime: int, chat_id: int):
         await self.execute('UPDATE users SET defaultTime = ? WHERE chat_id = ?', (nuovoTime, chat_id,), commit=True)
+    
+
+    async def totcanali(self):
+        return await self.execute('SELECT COUNT(*) FROM channels', [], fetch=3)
+
+    async def totusers(self):
+        return await self.execute('SELECT COUNT(*) FROM users', [], fetch=3)
 
 
     async def updateAction(self, action: str, chat_id: int):
