@@ -33,8 +33,6 @@ async def requests_handler(bot, update):
             await bot.copy_message(update.from_user.id, int(welcome[1]), int(welcome[0]))
         except Exception as e:
             print(str(e))
-    
-    await db.adduser(update.from_user.id)
 
     print('Ended in:', round(time()-t1, 4), '\n')
     return
